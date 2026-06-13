@@ -1,0 +1,8 @@
+# The real, encrypted secrets file (create from secrets.example.yaml). Even
+# though SOPS encrypts it, keep it out of a PUBLIC template fork until you have
+# your own recipients configured.
+/secrets.yaml
+# Nix build artifacts
+/result
+/result-*
+.direnv/

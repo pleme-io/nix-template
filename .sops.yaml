@@ -1,0 +1,8 @@
+# .sops.yaml — which age/PGP recipients can decrypt secrets.yaml.
+# Replace the placeholder age key with YOUR recipient(s):
+#   age-keygen -o ~/.config/sops/age/keys.txt   # prints the public key
+creation_rules:
+  - path_regex: secrets\.yaml$
+    key_groups:
+      - age:
+          - age1REPLACE_ME0000000000000000000000000000000000000000000000000000
