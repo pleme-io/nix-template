@@ -27,6 +27,11 @@ let
     "server-base" = { class = "nixos"; axis = "base"; module = ../profiles/server-base.nix; };
     "security" = { class = "nixos"; axis = "mixin"; module = ../profiles/security.nix; };
     "edge" = { class = "nixos"; axis = "role"; module = ../profiles/edge.nix; };
+    "nixos-k3s-server" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-k3s-server/default.nix; };
+    "nixos-gnome-desktop" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-gnome-desktop/default.nix; };
+    "nixos-security-hardened" = { class = "nixos"; axis = "mixin"; module = ../profiles/nixos-security-hardened/default.nix; };
+    "nixos-laptop-server" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-laptop-server/default.nix; };
+    "nixos-edge-router" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-edge-router/default.nix; };
     "workstation" = { class = "darwin"; axis = "role"; module = ../profiles/workstation.nix; };
   };
 

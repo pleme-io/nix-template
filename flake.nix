@@ -19,6 +19,12 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # stylix auto-themes GNOME/GDM/GTK/cursor/icons from one base16 palette;
+    # consumed by profiles/nixos-gnome-desktop. Public upstream input.
+    stylix = {
+      url = "github:nix-community/stylix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # A real fleet adds the behavior vocabulary as inputs (all follow nixpkgs):
     #   blackmatter.url = "github:pleme-io/blackmatter";
     #   blackmatter-security.url = "github:pleme-io/blackmatter-security";
