@@ -7,7 +7,10 @@
 # extensions the system profile installs (tray icons, a real dock, blur).
 #
 # Pure dconf — no vocabulary dependency, evaluates on plain home-manager.
-{ ... }: {
+{ lib, ... }: {
+  # home-manager requires a stateVersion per user; a real node may pin its own.
+  home.stateVersion = lib.mkDefault "25.11";
+
   dconf.settings = {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";

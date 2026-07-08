@@ -85,11 +85,14 @@
       profiles = [ "server-base" "security" "edge" "node/edge-01" ];
       deploy = { };
     };
+    # A developer laptop running the styled GNOME desktop — also the worked
+    # example that exercises the nixos-gnome-desktop profile (so `nix flake
+    # check` / a toplevel eval keeps it honest).
     laptop-01 = {
       class = "nixos";
       system = "x86_64-linux";
-      tags = [ "agent" "laptop" ];
-      profiles = [ "server-base" "security" "node/laptop-01" ];
+      tags = [ "laptop" "desktop" "workstation" ];
+      profiles = [ "server-base" "security" "nixos-gnome-desktop" "node/laptop-01" ];
       deploy = { };
     };
     studio = {

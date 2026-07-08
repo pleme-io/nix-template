@@ -22,7 +22,10 @@
     # stylix auto-themes GNOME/GDM/GTK/cursor/icons from one base16 palette;
     # consumed by profiles/nixos-gnome-desktop. Public upstream input.
     stylix = {
-      url = "github:nix-community/stylix";
+      # release-25.11 to match nixpkgs (stylix main tracks unstable and
+      # references options like services.displayManager.generic that don't
+      # exist in the 25.11 release).
+      url = "github:nix-community/stylix/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # A real fleet adds the behavior vocabulary as inputs (all follow nixpkgs):
@@ -60,8 +63,25 @@
         # sops-nix modules are in the base so the `secrets` blank (fleet.nix)
         # has a `sops.secrets` option to land on — without them a node with any
         # declared secret fails eval ("option sops does not exist").
+        # stylix's module is imported here (not in the profile) because kata
+        # does not thread `inputs` into node modules' specialArgs — a profile
+        # that referenced `inputs.stylix…` in its `imports` would recurse. It is
+        # inert unless a profile sets `stylix.enable` (nixos-gnome-desktop does).
         base = {
-          nixos = [ ./modules/node-mode.nix inputs.sops-nix.nixosModules.sops ];
+          nixos = [
+            ./modules/node-mode.nix
+            inputs.sops-nix.nixosModules.sops
+            inputs.stylix.nixosModules.stylix
+            # home-manager as a NixOS module, so profiles can set
+            # `home-manager.users.<name>` (nixos-gnome-desktop does, for per-user
+            # GNOME dconf). Sane fleet defaults; inert until a profile uses it.
+            inputs.home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = lib.mkDefault true;
+              home-manager.useUserPackages = lib.mkDefault true;
+              home-manager.backupFileExtension = lib.mkDefault "hm-bak";
+            }
+          ];
           darwin = [ ./modules/node-mode.nix inputs.sops-nix.darwinModules.sops ];
         };
         # Node `profiles = [ "name" ]` entries resolve through the catalog.

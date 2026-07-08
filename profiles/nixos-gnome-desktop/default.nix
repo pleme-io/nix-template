@@ -13,10 +13,13 @@
 #
 # Standalone-evaluable: every option below is plain nixpkgs + the public stylix
 # input. Opt a node in by listing "nixos-gnome-desktop" in its profile stack.
-{ config, lib, pkgs, inputs, ... }:
+{ config, lib, pkgs, ... }:
 {
-  # stylix's NixOS module — the public upstream `stylix` flake input.
-  imports = [ inputs.stylix.nixosModules.stylix ];
+  # stylix's NixOS module is imported once in the flake's node base (flake.nix),
+  # where the `inputs` are in scope — kata does not thread `inputs` into node
+  # modules' specialArgs, so referencing `inputs.stylix…` in a profile's
+  # `imports` would infinite-recurse. The module is inert unless `stylix.enable`
+  # (below) is set, so every node carrying it pays nothing until it opts in.
 
   # ── GNOME on Wayland via GDM ──────────────────────────────────
   services.xserver.enable = true;            # xkb + Xwayland support
