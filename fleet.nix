@@ -72,32 +72,31 @@
       class = "nixos";
       system = "x86_64-linux";
       tags = [ "server" "k3s" ];
-      profiles = [ "server-base" "security" ];
-      modules = [ ./nodes/server-01 ]; # identity + hardware (per-host)
+      # Per-host identity + hardware come in via the `node/<host>` profile
+      # (registered in lib/profiles.nix → ../nodes/<host>); the kata node
+      # schema has no `modules` key — everything is a named profile.
+      profiles = [ "server-base" "security" "node/server-01" ];
       deploy = { }; # deploy-rs by default; null = local-only
     };
     edge-01 = {
       class = "nixos";
       system = "x86_64-linux";
       tags = [ "server" "edge" ];
-      profiles = [ "server-base" "security" "edge" ];
-      modules = [ ./nodes/edge-01 ];
+      profiles = [ "server-base" "security" "edge" "node/edge-01" ];
       deploy = { };
     };
     laptop-01 = {
       class = "nixos";
       system = "x86_64-linux";
       tags = [ "agent" "laptop" ];
-      profiles = [ "server-base" "security" ];
-      modules = [ ./nodes/laptop-01 ];
+      profiles = [ "server-base" "security" "node/laptop-01" ];
       deploy = { };
     };
     studio = {
       class = "darwin";
       system = "aarch64-darwin";
       tags = [ "workstation" ];
-      profiles = [ "workstation" ];
-      modules = [ ./nodes/studio ];
+      profiles = [ "workstation" "node/studio" ];
       deploy = null; # darwin hosts deploy locally
     };
   };

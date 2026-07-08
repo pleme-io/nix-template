@@ -33,6 +33,14 @@ let
     "nixos-laptop-server" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-laptop-server/default.nix; };
     "nixos-edge-router" = { class = "nixos"; axis = "role"; module = ../profiles/nixos-edge-router/default.nix; };
     "workstation" = { class = "darwin"; axis = "role"; module = ../profiles/workstation.nix; };
+
+    # Per-host identity + hardware (axis = node — the highest authority band).
+    # The kata node schema has no `modules` key; a node pulls its own dir in as
+    # a `node/<host>` profile listed in its fleet.nix `profiles`.
+    "node/server-01" = { class = "nixos"; axis = "node"; module = ../nodes/server-01; };
+    "node/edge-01" = { class = "nixos"; axis = "node"; module = ../nodes/edge-01; };
+    "node/laptop-01" = { class = "nixos"; axis = "node"; module = ../nodes/laptop-01; };
+    "node/studio" = { class = "darwin"; axis = "node"; module = ../nodes/studio; };
   };
 
   names = builtins.attrNames entries;
