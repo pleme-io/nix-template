@@ -57,9 +57,12 @@
         };
         # The typed-enum pattern (modules/node-mode.nix) is baked into every
         # node, so any node/profile can set `fleet.mode.shape` + read the facets.
+        # sops-nix modules are in the base so the `secrets` blank (fleet.nix)
+        # has a `sops.secrets` option to land on — without them a node with any
+        # declared secret fails eval ("option sops does not exist").
         base = {
-          nixos = [ ./modules/node-mode.nix ];
-          darwin = [ ./modules/node-mode.nix ];
+          nixos = [ ./modules/node-mode.nix inputs.sops-nix.nixosModules.sops ];
+          darwin = [ ./modules/node-mode.nix inputs.sops-nix.darwinModules.sops ];
         };
         # Node `profiles = [ "name" ]` entries resolve through the catalog.
         # Add behavior by IMPORTING vocabulary (blackmatter components, kata/iroha
