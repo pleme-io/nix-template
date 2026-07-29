@@ -89,13 +89,59 @@
         # letters) — never by hand-rolling behavior modules in this repo.
         profiles = profiles.table;
       };
+
+      # ── THE INVOKER ──────────────────────────────────────────────────────
+      # A fleet flake DECLARES `checks` (below) — but nothing in the fleet
+      # workflow ever BUILDS them. `nixos-rebuild` / `darwin-rebuild` never
+      # look at `checks`, and a fleet repo is private by default, so no CI
+      # runs `nix flake check`. A declared-but-uninvoked check is not a weak
+      # gate; it is nothing at all. So the gate goes where the rebuild cannot
+      # route around it.
+      #
+      # kata's invariants are decided at EVAL time — iroha.mkEvalChecks
+      # computes `passed` as a pure boolean, and the derivation only carries
+      # that verdict. So force the verdict on the way into every SHIPPING
+      # output: selecting `nixosConfigurations.<node>` forces `gate`, and a
+      # red gate THROWS with every failing case named, before one byte is
+      # built — on any host, with no CI, no builder, and no matching system.
+      #
+      # TIER: eval-rejected. Stronger than a CI gate (only-mitigated, and
+      # vacuous in a private repo where Actions never run); weaker than
+      # truly-unrepresentable — a Nix `throw` is not a compile error.
+      suite = substrate.iroha.mkEvalChecks {
+        name = "fleet-${fleet.config.name}";
+        tests = fleet.invariants;
+      };
+
+      gate =
+        let
+          n = builtins.length (builtins.attrNames suite.tests);
+          render =
+            f:
+            "  FAIL ${f.name}\n    expected: ${builtins.toJSON f.expected}\n    got:      ${builtins.toJSON f.result}";
+        in
+        # NON-EMPTY SUBJECT SET. A gate that runs over zero invariants is
+        # green while proving nothing — the most extreme round-up available,
+        # because the evidence looks like the strongest kind. Refuse it.
+        if n == 0 then
+          throw "fleet gate: the invariant suite is EMPTY — a gate over zero subjects proves nothing. Refusing to evaluate."
+        else if !suite.passed then
+          throw "fleet gate: FAILED — ${suite.summary} invariants\n${lib.concatStringsSep "\n" (map render suite.failures)}"
+        else
+          n;
+
+      # Every shipping output passes through the gate. The DIAGNOSTIC outputs
+      # (fleetReport / profileCatalog / checks) deliberately do not, so a
+      # fleet whose gate is red can still be inspected to find out why.
+      gated = v: builtins.seq gate v;
     in
     {
-      inherit (fleet) nixosConfigurations darwinConfigurations;
+      nixosConfigurations = gated fleet.nixosConfigurations;
+      darwinConfigurations = gated fleet.darwinConfigurations;
 
       # Typed deploy data (feed deploy-rs / colmena at your edge).
-      fleetDeploy = fleet.deployRs;
-      fleetRegistry = fleet.registry;
+      fleetDeploy = gated fleet.deployRs;
+      fleetRegistry = gated fleet.registry;
 
       # Composed letters — derived for free from the one mkFleet call.
       # `fleetSshAliases` is shaped as blackmatter.components.ssh.extraHosts;
@@ -110,8 +156,19 @@
       # The profile catalog reflection:  nix eval .#profileCatalog --json | jq
       profileCatalog = profiles.catalog;
 
+      # Still declared — this is what `nix flake check` builds, and what a
+      # PUBLIC fleet repo should also gate in CI (see README "The gate").
+      # It is the same verdict `gate` forces; it is not the mechanism that
+      # makes the verdict unskippable.
       checks = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
         system: fleet.checksFor (import nixpkgs { inherit system; })
       );
+
+      # Makes the documented `nix flake init -t github:pleme-io/nix-template`
+      # real — without this output that command fails with "template not found".
+      templates.default = {
+        path = ./.;
+        description = "pleme-io kata-standard fleet repo — fill in fleet.nix, node hardware, secrets";
+      };
     };
 }

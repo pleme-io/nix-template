@@ -68,13 +68,53 @@ blackmatter.components.sshServer.enable = lib.mkDefault true;
 
 The comments in each `profiles/*.nix` show the blackmatter line they stand in for.
 
+## The gate
+
+`checks` is *declared* by every fleet flake — but nothing in the fleet workflow
+ever **builds** it. `nixos-rebuild` / `darwin-rebuild` never look at `checks`,
+and a fleet repo is private by default, so no CI runs `nix flake check`. A
+declared-but-uninvoked check is not a weak gate; it is **nothing at all**.
+
+So the invariant verdict is forced where the rebuild cannot route around it. The
+18 kata invariants are decided at *eval* time, and `flake.nix` `seq`s that
+verdict onto every **shipping** output (`nixosConfigurations`,
+`darwinConfigurations`, `fleetDeploy`, `fleetRegistry`):
+
+```
+$ nixos-rebuild switch --flake .#server-01     # after a duplicate uid in fleet.nix
+error: fleet gate: FAILED — 16/18 passed invariants
+  FAIL test:users:gids-unique
+    expected: true
+    got:      false
+  FAIL test:users:uids-unique
+    expected: true
+    got:      false
+```
+
+No CI, no builder, no matching system needed — it throws before one byte is
+built. The **diagnostic** outputs (`fleetReport`, `profileCatalog`, `checks`)
+are deliberately *ungated*, so a fleet whose gate is red can still be inspected.
+The gate also refuses to be green over an **empty** invariant suite: a gate with
+no subjects proves nothing while looking like the strongest kind of evidence.
+
+**Tier: eval-rejected.** Stronger than a CI gate (`only-mitigated`, and vacuous
+in a private repo where Actions never run); weaker than truly-unrepresentable —
+a Nix `throw` is not a compile error.
+
+*If your fleet repo is **public***, add CI on top — the gate is the floor, not a
+reason to skip it. Use the non-empty-set pattern from
+`substrate/.github/workflows/cargo-ci.yml` (`flakeChecksGatePath`), which fails
+rather than reporting green over zero checks; a bare `nix flake check` step is
+green on a flake that declares none.
+
 ## Rules
 
 1. **Never write behavior modules here.** Extend the vocabulary, then consume it.
 2. Every host is one `nodes.<name>` entry in `fleet.nix` + one `nodes/<name>/` dir.
 3. Every app is one `apps.<name>` manifest entry.
-4. A schema typo in `fleet.nix` **fails `nix flake check` with a named error** —
-   unknown keys are rejected, never ignored.
+4. A schema typo in `fleet.nix` **fails evaluation with a named error** — unknown
+   keys are rejected, never ignored — and a broken *invariant* fails the same way,
+   at rebuild time, via the gate above.
 
 See [`docs/PATTERNS.md`](docs/PATTERNS.md) for the patterns (the blanks, thin
 profiles, the catalog, the typed-enum, the manifest) and why they're shaped this

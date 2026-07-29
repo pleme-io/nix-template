@@ -53,6 +53,37 @@ One typed entry per fleet app drives HM-module imports + overlay registration +
 profile auto-enables (`iroha.mkManifest`). The manifest is the single source of
 "which apps this fleet runs and how they wire in" — no parallel hand-lists.
 
+## 7. The gate (`flake.nix`) — an invoked check, not a declared one
+
+`kata.mkFleet` hands back `checksFor`, and the flake exposes it as `checks`. That
+is a **declaration**. Nothing in the fleet workflow builds it: `nixos-rebuild`
+and `darwin-rebuild` never read `checks`, and a fleet repo is private by default
+so no CI runs `nix flake check`. A check that nothing invokes proves nothing —
+worse than no check, because a green-looking surface reads as coverage.
+
+The fix is placement, not a stronger check. kata's invariants are decided at
+**eval** time (`iroha.mkEvalChecks` computes `passed` as a pure boolean; the
+derivation only carries the verdict), so `flake.nix` forces that verdict onto
+every **shipping** output with `builtins.seq`. Selecting
+`nixosConfigurations.<node>` forces the gate; a red gate throws, naming every
+failing case, before anything is built.
+
+Two properties make it a gate rather than decoration:
+
+- **Unskippable on the shipping path.** The rebuild must evaluate the output the
+  gate sits in front of. Diagnostic outputs (`fleetReport`, `profileCatalog`,
+  `checks`) are deliberately left ungated so a red fleet stays debuggable.
+- **Non-empty subject set.** An empty invariant suite is `passed = true`. Without
+  an explicit `n == 0` refusal, a fleet with zero invariants would sail through
+  green — the vacuous-guard failure mode, where the evidence looks strongest
+  exactly when it is worth nothing.
+
+Tier honesty: this is **eval-rejected** (a Nix `throw`), not
+truly-unrepresentable. A CI gate would be `only-mitigated`, and in a private repo
+it is vacuous — Actions never run. Public fleet repos should add CI *on top*,
+using a non-empty-set gate that fails rather than reporting green over zero
+checks.
+
 ## The forward rule
 
 A new concept ships as **one system + one interface + a `types.*` schema**, with
