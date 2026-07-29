@@ -76,13 +76,18 @@ and a fleet repo is private by default, so no CI runs `nix flake check`. A
 declared-but-uninvoked check is not a weak gate; it is **nothing at all**.
 
 So the invariant verdict is forced where the rebuild cannot route around it. The
-18 kata invariants are decided at *eval* time, and `flake.nix` `seq`s that
-verdict onto every **shipping** output (`nixosConfigurations`,
-`darwinConfigurations`, `fleetDeploy`, `fleetRegistry`):
+19 kata invariants are decided at *eval* time, and **`kata.mkFleet` ships the
+invoker**: `fleet.shipping` is `fleet.*` with that verdict already `seq`'d on.
+This flake just consumes it, so every **shipping** output (`nixosConfigurations`,
+`darwinConfigurations`, `fleetDeploy`, `fleetRegistry`) is gated:
+
+```nix
+inherit (fleet.shipping) nixosConfigurations darwinConfigurations;
+```
 
 ```
 $ nixos-rebuild switch --flake .#server-01     # after a duplicate uid in fleet.nix
-error: fleet gate: FAILED — 16/18 passed invariants
+error: iroha gate (kata-fleet-example-fleet): FAILED — 17/19 passed
   FAIL test:users:gids-unique
     expected: true
     got:      false
@@ -93,9 +98,14 @@ error: fleet gate: FAILED — 16/18 passed invariants
 
 No CI, no builder, no matching system needed — it throws before one byte is
 built. The **diagnostic** outputs (`fleetReport`, `profileCatalog`, `checks`)
-are deliberately *ungated*, so a fleet whose gate is red can still be inspected.
-The gate also refuses to be green over an **empty** invariant suite: a gate with
-no subjects proves nothing while looking like the strongest kind of evidence.
+are deliberately *ungated* and excluded from `fleet.shipping`, so a fleet whose
+gate is red can still be inspected. The gate also refuses to be green over an
+**empty** invariant suite (a refusal that lives in `iroha.mkEvalChecks`, so it
+covers every caller): a gate with no subjects proves nothing while looking like
+the strongest kind of evidence.
+
+Taking these from `fleet` directly instead of `fleet.shipping` is the *ungated*
+shape — it still evaluates, and still proves nothing.
 
 **Tier: eval-rejected.** Stronger than a CI gate (`only-mitigated`, and vacuous
 in a private repo where Actions never run); weaker than truly-unrepresentable —

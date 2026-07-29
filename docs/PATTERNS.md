@@ -63,20 +63,32 @@ worse than no check, because a green-looking surface reads as coverage.
 
 The fix is placement, not a stronger check. kata's invariants are decided at
 **eval** time (`iroha.mkEvalChecks` computes `passed` as a pure boolean; the
-derivation only carries the verdict), so `flake.nix` forces that verdict onto
-every **shipping** output with `builtins.seq`. Selecting
-`nixosConfigurations.<node>` forces the gate; a red gate throws, naming every
-failing case, before anything is built.
+derivation only carries the verdict), so that verdict is `seq`'d onto every
+**shipping** output. Selecting `nixosConfigurations.<node>` forces the gate; a
+red gate throws, naming every failing case, before anything is built.
+
+**The invoker lives in the primitive, not here.** `kata.mkFleet` returns
+`shipping` (nixos/darwinConfigurations, deployRs, colmena, registry, byTag —
+pre-gated) alongside `gate` and `gated`, so a fleet flake adopts the gate in one
+line — `inherit (fleet.shipping) nixosConfigurations darwinConfigurations;` —
+rather than re-deriving it. This repo hand-rolled ~25 lines of exactly that
+before `substrate@841b641` lifted it up; the copy is gone, because a local copy
+of a fleet-wide rule is a drift source. If the gate needs to get stronger, it
+gets stronger in `kata.mkFleet` and every fleet inherits it.
 
 Two properties make it a gate rather than decoration:
 
 - **Unskippable on the shipping path.** The rebuild must evaluate the output the
   gate sits in front of. Diagnostic outputs (`fleetReport`, `profileCatalog`,
-  `checks`) are deliberately left ungated so a red fleet stays debuggable.
+  `checks`) are deliberately left ungated — and deliberately absent from
+  `shipping` — so a red fleet stays debuggable.
 - **Non-empty subject set.** An empty invariant suite is `passed = true`. Without
   an explicit `n == 0` refusal, a fleet with zero invariants would sail through
   green — the vacuous-guard failure mode, where the evidence looks strongest
-  exactly when it is worth nothing.
+  exactly when it is worth nothing. That refusal sits in `iroha.mkEvalChecks`,
+  one layer *below* kata: a kata fleet is structurally non-empty (its cross-
+  invariants are unconditional), so at the kata layer alone the arm would guard
+  an unreachable state, while at the harness layer it covers every caller.
 
 Tier honesty: this is **eval-rejected** (a Nix `throw`), not
 truly-unrepresentable. A CI gate would be `only-mitigated`, and in a private repo
